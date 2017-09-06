@@ -15,12 +15,12 @@ class ModelTrainer:
 
 	def _create_architecture(self):
 		model = Sequential()
-		model.add(BatchNormalization(axis=1, input_shape=(336,)))
-		model.add(Convolution2D(24, 3, 3, activation='relu', input_shape=(336,)))
-		model.add(Convolution2D(16, 3, 3, activation='relu'))
+		model.add(BatchNormalization(axis=1, input_shape=(11,)))
+		model.add(Convolution2D(8, 3, 3, activation='relu', input_shape=(11,)))
+		model.add(Convolution2D(6, 3, 3, activation='relu'))
 		model.add(Dropout(.25))
 		model.add(Flatten())
-		model.add(Dense(17, activation=None))
+		model.add(Dense(3, activation=None))
 		model.compile(loss='mean_squared_error', optimizer='adam', metrics=['accuracy'])
 
 		self.model = model
