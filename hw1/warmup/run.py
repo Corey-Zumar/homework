@@ -8,9 +8,12 @@ if __name__ == "__main__":
     f.close()
     actions = []
     for item in data['actions']:
-        actions.append(item[0])
+        actions.append([[item[i]] for i in range(len(item))])
     actions = np.array(actions)
-    obs = data['observations']
+    obs = []
+    for item in data['observations']:
+        obs.append([[item[i]] for i in range(len(item))])
+    obs = np.array(obs)
 
     trainer = ModelTrainer()
     trainer.train(obs, actions)
