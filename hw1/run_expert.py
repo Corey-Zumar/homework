@@ -68,5 +68,12 @@ def main():
         expert_data = {'observations': np.array(observations),
                        'actions': np.array(actions)}
 
+        print(expert_data)
+
+    return expert_data
+
 if __name__ == '__main__':
-    main()
+    expert_data = main()
+    out = open("data/expert_data.sav", "w")
+    pickle.dump(expert_data, out)
+    out.close()
