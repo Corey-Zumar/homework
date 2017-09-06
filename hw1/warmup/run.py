@@ -17,5 +17,8 @@ if __name__ == "__main__":
 
     trainer = ModelTrainer()
     training_history = trainer.train(obs, actions)
+    out = open("training_info.sav", "w")
+    pickle.dump(training_history, out)
+    out.close()
 
 
