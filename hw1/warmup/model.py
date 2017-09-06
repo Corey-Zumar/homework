@@ -5,10 +5,11 @@ from keras.layers.normalization import BatchNormalization
 class ModelTrainer:
 
 	def __init__(self):
-		pass
+		self.arch_exists = False
+        pass
 
 	def train(self, X, Y):
-		if not self.model:
+		if not self.arch_exists:
 			self._create_architecture()
 
 		self.model.fit(X, Y, batch_size=200, nb_epoch=10, verbose=1)
