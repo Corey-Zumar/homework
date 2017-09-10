@@ -17,12 +17,12 @@ class ModelTrainer:
 
 	def _create_architecture(self):
 		model = Sequential()
-		model.add(BatchNormalization(input_shape=(11,1)))
-		model.add(Convolution1D(10,8, activation='relu', input_shape=(11,1)))
-		model.add(Convolution1D(8, 6, activation='relu'))
-		model.add(Convolution1D(6, 2, activation='relu'))
+		model.add(BatchNormalization(input_shape=(8,1)))
+		model.add(Convolution1D(8, 6, activation='relu', input_shape=(8,1)))
+		model.add(Convolution1D(6, 4, activation='relu'))
+		model.add(Convolution1D(4, 2, activation='relu'))
 		model.add(Convolution1D(2, 2, activation='relu'))
 		model.add(Flatten())
-		model.add(Dense(3))
+		model.add(Dense(8))
 		model.compile(loss='mean_squared_error', optimizer='adam', metrics=['accuracy'])
 		self.model = model
