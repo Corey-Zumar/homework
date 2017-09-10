@@ -14,7 +14,6 @@ import tensorflow as tf
 import numpy as np
 import tf_util
 import gym
-import load_policy
 import keras
 
 class Predictor:
@@ -23,9 +22,10 @@ class Predictor:
         self.model = keras.models.load_model(model_path)
 
     def predict(self, data):
+        data = np.array([[[item] for item in data[0]]])
         return self.model.predict(data, batch_size=1, verbose=1)
 
-def main(predictor):
+def main():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('expert_policy_file', type=str)
@@ -34,9 +34,11 @@ def main(predictor):
     parser.add_argument("--max_timesteps", type=int)
     parser.add_argument('--num_rollouts', type=int, default=20,
                         help='Number of expert roll outs')
+    parser.add_argument('--model_path', type=str)
     args = parser.parse_args()
 
     print('loading and building expert policy')
+    predictor = Predictor(args.model_path)
     policy_fn = predictor.predict
     print('loaded and built')
 
@@ -58,6 +60,7 @@ def main(predictor):
             steps = 0
             while not done:
                 action = policy_fn(obs[None,:])
+                print(action)
                 observations.append(obs)
                 actions.append(action)
                 obs, r, done, _ = env.step(action)
@@ -82,9 +85,4 @@ def main(predictor):
     return expert_data
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        raise
-
-    model_path = sys.argv[1]
-    predictor = Predictor(model_path)
-    expert_data = main(predictor)
+    expert_data = main()
