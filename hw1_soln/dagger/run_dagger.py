@@ -29,12 +29,6 @@ class Model:
 		self.model = model
 
 	def predict(self, data):
-	# 	means = self.feature_means
-	# 	stds = self.feature_stds
-	# 	for i in range(0, data.shape[1]):
-	# 		data[:,i] = data[:,i] - means[i]
-	# 		data[:,i] = data[:,i] / (stds[i] + 1e-6)
-
 		return self.model.predict(data, batch_size=1, verbose=1)
 
 	def preprocess(self, X):
@@ -51,17 +45,14 @@ class Model:
 			X[:,i] = X[:,i] / (col_std + 1e-6)
 
 		return X
-        
+		
 	def train(self, X, Y):
-		#X = self.preprocess(X)
-		self.model.fit(X, Y, batch_size=200, epochs=100, verbose=1)
+		self.model.fit(X, Y, batch_size=200, epochs=50, verbose=1)
 
 def main():
 	import argparse
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--expert_policy_file', type=str)
-	
-	parser.add_argument('--render', action='store_true')
 	parser.add_argument('--num_rollouts', type=int, default=20,
 							help='Number of expert roll outs')
 	parser.add_argument('--data_path', type=str)
@@ -80,9 +71,13 @@ def main():
 		tf_util.initialize()
 		import gym
 		env = gym.make('Walker2d-v1')
+		expert_env = gym.make('Walker2d-v1')
 		max_steps = env.spec.timestep_limit
 
 		model = Model()
+
+		all_model_returns = []
+		all_expert_returns = []
 
 		for i in range(int(args.num_dagger_iters)):
 			model.train(data['observations'], data['actions'])
@@ -119,49 +114,22 @@ def main():
 			print('mean return', np.mean(returns))
 			print('std of return', np.std(returns))
 
-def run_standard():
-	import argparse
-	parser = argparse.ArgumentParser()
-	parser.add_argument('--expert_policy_file', type=str)
-	
-	parser.add_argument('--render', action='store_true')
-	parser.add_argument('--num_rollouts', type=int, default=20,
-							help='Number of expert roll outs')
-	parser.add_argument('--data_path', type=str)
-	parser.add_argument('--num_dagger_iters', type=str)
-	args = parser.parse_args()
+			observations = np.array(observations)
+			expert_actions = np.array(expert_actions)
 
-	print('loading and building expert policy')
-	policy_fn = load_policy.load_policy(args.expert_policy_file)
-	print('loaded and built')
+			returns_data = {'returns': returns, 'mean': np.mean(returns), 'std': np.std(returns)}
 
-	data_file = open(args.data_path, "rb")
-	data = pickle.load(data_file)
-	data_file.close()
-	model = Model()
+			all_model_returns.append(returns_data)
 
-	with tf.Session():
-		tf_util.initialize()
-		import gym
-		env = gym.make('Walker2d-v1')
-		max_steps = env.spec.timestep_limit
-
-		for i in range(int(args.num_dagger_iters)):
-			model.train(data['observations'], data['actions'])
 			returns = []
-			observations = []
-			expert_actions = []
 			for i in range(args.num_rollouts):
-				obs = env.reset()
+				obs = expert_env.reset()
 				totalr = 0.
 				steps = 0
 				done = False
 				while not done:
-					model_action = model.predict(obs[None,:])
 					expert_action = policy_fn(obs[None,:])
-					observations.append(obs)
-					expert_actions.append(expert_action[0])
-					obs, r, done, _ = env.step(model_action)
+					obs, r, done, _ = expert_env.step(expert_action)
 					totalr += r
 					steps += 1
 
@@ -170,15 +138,16 @@ def run_standard():
 						break
 					returns.append(totalr)
 
-			observations = np.array(observations)
-			expert_actions = np.array(expert_actions)
+			returns_data = {'returns': returns, 'mean': np.mean(returns), 'std': np.std(returns)}
+			all_expert_returns.append(returns_data)
 
-			# data['actions'] = np.concatenate([data['actions'], expert_actions], axis=0)
-			# data['observations'] = np.concatenate([data['observations'], observations], axis=0)
+		returns_file = open("dagger_walker_returns.sav", "w")
+		pickle.dump(all_model_returns, returns_file)
+		returns_file.close()
 
-			print('returns', returns)
-			print('mean return', np.mean(returns))
-			print('std of return', np.std(returns))
+		returns_file = open("dagger_expert_returns.sav", "w")
+		pickle.dump(all_expert_returns, returns_file)
+		returns_file.close()
 
 if __name__ == "__main__":
 	main()

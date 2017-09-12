@@ -13,6 +13,7 @@ if __name__ == "__main__":
 
 	returns_file = open(args.returns_path, "rb")
 	returns_data = pickle.load(returns_file)
+	returns_file.close()
 
 	epochs = range(len(returns_data))
 	returns_means = [item['mean'] for item in returns_data]

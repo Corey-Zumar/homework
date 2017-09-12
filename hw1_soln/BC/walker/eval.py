@@ -81,7 +81,7 @@ def main():
     print('std of return', np.std(returns))
 
     returns_data = {'returns': returns, 'mean': np.mean(returns), 'std': np.std(returns)}
-    returns_file = open("ant_model_returns.sav", "w")
+    returns_file = open("walker_model_returns.sav", "w")
     pickle.dump(returns_data, returns_file)
     returns_file.close()
 
