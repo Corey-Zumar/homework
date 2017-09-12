@@ -1,5 +1,19 @@
 ## Exercise 2 (Warmup)
+First, obtain expert data from the hopper environment by running the following from the `hw1_soln` directory:
+```sh
+cd data_collection/
+python run_expert.py experts/Hopper-v1.pkl Hopper-v1 --num_rollouts 50
+```
+A file called `expert_data.sav` will be generated in the `hw1_soln/data_collection/data` directory containing pickled training data. We will now copy it into the model training directory for Hopper:
+```sh
+cp data/expert_data.sav ../BC/hopper
+```
 
+Now, to execute a training process that is indicative of quickly decreasing mean squared loss for a BC model for the Hopper environment, run the following from the `hw1_soln` directory:
+```sh
+python BC/hopper/run_trainer.py 
+```
+Monitoring the Keras log output, it becomes clear that training loss is decreasing dramatically.
 
 ## Exercise 3
 
