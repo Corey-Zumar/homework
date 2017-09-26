@@ -10,6 +10,8 @@ from dqn_utils import *
 
 OptimizerSpec = namedtuple("OptimizerSpec", ["constructor", "kwargs", "lr_schedule"])
 
+EPSILON=.2
+
 def learn(env,
           q_func,
           optimizer_spec,
@@ -127,7 +129,18 @@ def learn(env,
     # Older versions of TensorFlow may require using "VARIABLES" instead of "GLOBAL_VARIABLES"
     ######
     
-    # YOUR CODE HERE
+    c_curr_q_vals = q_func(obs_t_float, num_actions, scope="q_func", reuse=False)
+    c_q_val_curr_act = tf.gather(c_curr_q_vals, indices=act_t_ph, axis=0)
+
+    c_target_q_vals = q_func(obs_tp1_float, num_actions, scope="target_q_func", reuse=False)
+    c_target_q_val_max = tf.reduce_max(c_target_q_vals)
+
+    c_y_j = tf.cond(done_mask_ph == 1, lambda : rew_t_ph, lambda : rew_t_ph + (gamma * c_target_q_val_max))
+
+    total_error = tf.square(c_q_val_curr_act - c_y_j)
+
+    q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="q_func")
+    target_q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="target_q_func")
 
     ######
 
@@ -192,11 +205,29 @@ def learn(env,
         # may not yet have been initialized (but of course, the first step
         # might as well be random, since you haven't trained your net...)
 
-        #####
-        
-        # YOUR CODE HERE
+        # Store frame
+        c_idx = replay_buffer.store_frame(last_obs)
 
-        #####
+        # Obtain action
+        c_q_network_input = replay_buffer.encode_recent_observation()
+
+        if (not model_initialized) or (np.random.rand() < EPSILON):
+            c_action = np.random.randint(num_actions)
+        else:
+            feed_dict = {
+                obs_t_ph : last_obs
+            }
+            c_target_q_func_vals = session.run([c_curr_q_vals], feed_dict=feed_dict)
+            c_action = np.argmax(c_target_q_func_vals)
+
+        # Save old state, take action, and store effect
+        c_old_obs = last_obs
+        last_obs, c_reward, c_done, _ = env.step(c_action)
+        replay_buffer.store_effect(c_idx, c_action, c_reward, c_done)
+        if c_done:
+            last_obs = env.reset()
+
+
 
         # at this point, the environment should have been advanced one step (and
         # reset if done was true), and last_obs should point to the new latest
@@ -244,9 +275,37 @@ def learn(env,
             # variable num_param_updates useful for this (it was initialized to 0)
             #####
             
-            # YOUR CODE HERE
+            [
+                c_obs_batch, 
+                c_act_batch, 
+                c_rew_batch, 
+                c_next_obs_batch, 
+                c_done
+            ] = replay_buffer.sample(batch_size)
 
-            #####
+            if not model_initialized:
+                feed_dict = {
+                    obs_t_ph : c_obs_batch,
+                    obs_tp1_ph : c_next_obs_batch
+                }
+                initialize_interdependent_variables(session, tf.global_variables(), feed_dict)
+                model_initialized = True
+
+            feed_dict = {
+                obs_t_ph : c_old_obs,
+                act_t_ph : c_action,
+                rew_t_ph : c_reward,
+                obs_tp1_ph : last_obs,
+                done_mask_ph : c_done,
+                learning_rate : optimizer_spec.lr_schedule.value(t)
+            }
+
+            c_total_error, _ = sess.run([total_error, train_fn], feed_dict=feed_dict)
+
+            if num_param_updates % target_update_freq == 0:
+                sess.run(update_target_fn)
+
+            num_param_updates += 1
 
         ### 4. Log progress
         episode_rewards = get_wrapper_by_name(env, "Monitor").get_episode_rewards()
