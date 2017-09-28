@@ -90,6 +90,7 @@ def learn(env,
         img_h, img_w, img_c = env.observation_space.shape
         input_shape = (img_h, img_w, frame_history_len * img_c)
     num_actions = env.action_space.n
+    print(num_actions)
 
     # set up placeholders
     # placeholder for current observation (or state)
@@ -130,7 +131,7 @@ def learn(env,
     ######
     
     c_curr_q_vals = q_func(obs_t_float, num_actions, scope="q_func", reuse=False)
-    c_q_val_curr_act = tf.gather(c_curr_q_vals, indices=act_t_ph, axis=0)
+    c_q_val_curr_act = tf.gather(c_curr_q_vals, indices=act_t_ph, axis=1)
 
     c_target_q_vals = q_func(obs_tp1_float, num_actions, scope="target_q_func", reuse=False)
     c_target_q_val_max = tf.reduce_max(c_target_q_vals)
@@ -217,7 +218,7 @@ def learn(env,
             c_action = np.random.randint(num_actions)
         else:
             feed_dict = {
-                obs_t_ph : last_obs
+                obs_t_ph : np.array([c_q_network_input], dtype=np.float32)
             }
             c_target_q_func_vals = session.run([c_curr_q_vals], feed_dict=feed_dict)
             c_action = np.argmax(c_target_q_func_vals)
