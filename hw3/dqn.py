@@ -333,5 +333,8 @@ def learn(env,
             log_file.write("episodes %d\n" % len(episode_rewards))
             log_file.write("exploration %f\n" % exploration.value(t))
             log_file.write("learning_rate %f\n" % optimizer_spec.lr_schedule.value(t))
+            log_file.write("\n")
+            log_file.write("---------------\n")
+            log_file.write("\n")
             log_file.close()
             sys.stdout.flush()
