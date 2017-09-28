@@ -85,6 +85,28 @@ def get_datasets(fpath, condition=None):
 
     return datasets
 
+def plot(legend, logdir, value):
+    use_legend = False
+    if legend is not None:
+        assert len(args.legend) == len(logdir), \
+            "Must give a legend title for each set of experiments."
+        use_legend = True
+
+    data = []
+    if use_legend:
+        for logdir, legend_title in zip(logdir, legend):
+            data += get_datasets(logdir, legend_title)
+    else:
+        for logdir in logdir:
+            data += get_datasets(logdir)
+
+    if isinstance(value, list):
+        values = value
+    else:
+        values = [value]
+    for value in values:
+        plot_data(data, value=value)
+
 
 def main():
     import argparse
@@ -94,26 +116,7 @@ def main():
     parser.add_argument('--value', default='AverageReturn', nargs='*')
     args = parser.parse_args()
 
-    use_legend = False
-    if args.legend is not None:
-        assert len(args.legend) == len(args.logdir), \
-            "Must give a legend title for each set of experiments."
-        use_legend = True
-
-    data = []
-    if use_legend:
-        for logdir, legend_title in zip(args.logdir, args.legend):
-            data += get_datasets(logdir, legend_title)
-    else:
-        for logdir in args.logdir:
-            data += get_datasets(logdir)
-
-    if isinstance(args.value, list):
-        values = args.value
-    else:
-        values = [args.value]
-    for value in values:
-        plot_data(data, value=value)
+    plot(args.legend, args.logdir, args.value)
 
 if __name__ == "__main__":
     main()

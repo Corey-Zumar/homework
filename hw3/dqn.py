@@ -291,12 +291,6 @@ def learn(env,
                 initialize_interdependent_variables(session, tf.global_variables(), feed_dict)
                 model_initialized = True
 
-            print(c_obs_batch.shape)
-            print(c_act_batch.shape)
-            print(c_rew_batch.shape)
-            print(c_next_obs_batch.shape)
-            print(c_done.shape)
-
             feed_dict = {
                 obs_t_ph : c_obs_batch,
                 act_t_ph : c_act_batch,
