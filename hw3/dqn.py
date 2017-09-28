@@ -320,7 +320,7 @@ def learn(env,
             print("episodes %d" % len(episode_rewards))
             print("exploration %f" % exploration.value(t))
             print("learning_rate %f" % optimizer_spec.lr_schedule.value(t))
-            log_file = open("log.txt", "w")
+            log_file = open("log.txt", "a")
             log_file.write("Timestep %d\n" % (t,))
             log_file.write("mean reward (100 episodes) %f\n" % mean_episode_reward)
             log_file.write("best mean reward %f\n" % best_mean_episode_reward)
