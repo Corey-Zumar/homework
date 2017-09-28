@@ -131,10 +131,12 @@ def learn(env,
     ######
     
     c_curr_q_vals = q_func(obs_t_float, num_actions, scope="q_func", reuse=False)
-    c_q_val_curr_act = tf.gather(c_curr_q_vals, indices=act_t_ph, axis=1)
+    c_curr_act_q_filter = tf.one_hot(act_t_ph, depth=num_actions)
+    c_q_val_curr_act = tf.reduce_sum(tf.multiply(c_curr_act_q_filter, c_curr_q_vals), axis=1)
+    #c_q_val_curr_act = tf.gather(c_curr_q_vals, indices=act_t_ph, axis=1)
 
     c_target_q_vals = q_func(obs_tp1_float, num_actions, scope="target_q_func", reuse=False)
-    c_target_q_val_max = tf.reduce_max(c_target_q_vals)
+    c_target_q_val_max = tf.reduce_max(c_target_q_vals, axis=1)
 
     c_gamma_q_val_max = gamma * c_target_q_val_max
 
@@ -220,7 +222,7 @@ def learn(env,
             feed_dict = {
                 obs_t_ph : np.array([c_q_network_input], dtype=np.float32)
             }
-            c_target_q_func_vals = session.run([c_curr_q_vals], feed_dict=feed_dict)
+            c_target_q_func_vals = session.run(c_curr_q_vals, feed_dict=feed_dict)
             c_action = np.argmax(c_target_q_func_vals)
 
         # Save old state, take action, and store effect
@@ -299,10 +301,6 @@ def learn(env,
                 done_mask_ph : c_done,
                 learning_rate : optimizer_spec.lr_schedule.value(t)
             }
-
-            test = session.run([c_q_val_curr_act], feed_dict=feed_dict)
-            print(test.shape)
-            print(test)
 
             c_total_error, _ = session.run([total_error, train_fn], feed_dict=feed_dict)
 
