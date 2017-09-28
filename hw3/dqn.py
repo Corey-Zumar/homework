@@ -135,7 +135,9 @@ def learn(env,
     c_target_q_vals = q_func(obs_tp1_float, num_actions, scope="target_q_func", reuse=False)
     c_target_q_val_max = tf.reduce_max(c_target_q_vals)
 
-    c_y_j = tf.cond(done_mask_ph == 1, lambda : rew_t_ph, lambda : rew_t_ph + (gamma * c_target_q_val_max))
+    c_gamma_q_val_max = gamma * c_target_q_val_max
+
+    c_y_j = rew_t_ph + c_gamma_q_val_max - tf.multiply(done_mask_ph, c_gamma_q_val_max)
 
     total_error = tf.square(c_q_val_curr_act - c_y_j)
 
@@ -221,13 +223,10 @@ def learn(env,
             c_action = np.argmax(c_target_q_func_vals)
 
         # Save old state, take action, and store effect
-        c_old_obs = last_obs
         last_obs, c_reward, c_done, _ = env.step(c_action)
         replay_buffer.store_effect(c_idx, c_action, c_reward, c_done)
         if c_done:
             last_obs = env.reset()
-
-
 
         # at this point, the environment should have been advanced one step (and
         # reset if done was true), and last_obs should point to the new latest
@@ -291,19 +290,25 @@ def learn(env,
                 initialize_interdependent_variables(session, tf.global_variables(), feed_dict)
                 model_initialized = True
 
+            print(c_obs_batch.shape)
+            print(c_act_batch.shape)
+            print(c_rew_batch.shape)
+            print(c_next_obs_batch.shape)
+            print(c_done.shape)
+
             feed_dict = {
-                obs_t_ph : c_old_obs,
-                act_t_ph : c_action,
-                rew_t_ph : c_reward,
-                obs_tp1_ph : last_obs,
+                obs_t_ph : c_obs_batch,
+                act_t_ph : c_act_batch,
+                rew_t_ph : c_rew_batch,
+                obs_tp1_ph : c_next_obs_batch,
                 done_mask_ph : c_done,
                 learning_rate : optimizer_spec.lr_schedule.value(t)
             }
 
-            c_total_error, _ = sess.run([total_error, train_fn], feed_dict=feed_dict)
+            c_total_error, _ = session.run([total_error, train_fn], feed_dict=feed_dict)
 
             if num_param_updates % target_update_freq == 0:
-                sess.run(update_target_fn)
+                session.run(update_target_fn)
 
             num_param_updates += 1
 
