@@ -300,6 +300,10 @@ def learn(env,
                 learning_rate : optimizer_spec.lr_schedule.value(t)
             }
 
+            test = session.run([c_q_val_curr_act], feed_dict=feed_dict)
+            print(test.shape)
+            print(test)
+
             c_total_error, _ = session.run([total_error, train_fn], feed_dict=feed_dict)
 
             if num_param_updates % target_update_freq == 0:
