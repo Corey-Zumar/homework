@@ -126,7 +126,7 @@ def get_env(task, seed):
 def main():
     parser = argparse.ArgumentParser(description='Run dqn atari')
     parser.add_argument('-e', '--epsilon', type=float, default=0.1)
-    parser.add_argument('-n', '--name', type=float, default=0.1)
+    parser.add_argument('-n', '--name', type=str)
 
     args = parser.parse_args()
 
