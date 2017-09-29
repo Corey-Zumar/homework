@@ -128,11 +128,11 @@ def main():
     parser.add_argument('-e', '--epsilon', type=float, default=0.1)
     parser.add_argument('-n', '--name', type=float, default=0.1)
 
+    args = parser.parse_args()
+
     if not args.name:
         print("Name must be specified!")
         raise
-
-    args = parser.parse_args()
 
 
     # Get Atari games.
