@@ -10,8 +10,6 @@ from dqn_utils import *
 
 OptimizerSpec = namedtuple("OptimizerSpec", ["constructor", "kwargs", "lr_schedule"])
 
-EPSILON=.2
-
 def learn(env,
           q_func,
           optimizer_spec,
@@ -216,7 +214,7 @@ def learn(env,
         # Obtain action
         c_q_network_input = replay_buffer.encode_recent_observation()
 
-        if (not model_initialized) or (np.random.rand() < EPSILON):
+        if (not model_initialized) or (np.random.rand() < exploration.value(t)):
             c_action = np.random.randint(num_actions)
         else:
             feed_dict = {
@@ -322,7 +320,7 @@ def learn(env,
             print("episodes %d" % len(episode_rewards))
             print("exploration %f" % exploration.value(t))
             print("learning_rate %f" % optimizer_spec.lr_schedule.value(t))
-            log_file = open("log.txt", "a")
+            log_file = open("log_{}.txt".format(exploration.final_p), "a")
             log_file.write("Timestep %d\n" % (t,))
             log_file.write("mean reward (100 episodes) %f\n" % mean_episode_reward)
             log_file.write("best mean reward %f\n" % best_mean_episode_reward)
