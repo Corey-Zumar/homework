@@ -30,7 +30,9 @@ def atari_model(img_in, num_actions, scope, reuse=False):
 
 def atari_learn(env,
                 session,
-                num_timesteps):
+                num_timesteps,
+                log_name,
+                epsilon=None):
     # This is just a rough estimate
     num_iterations = float(num_timesteps) / 4.0
 
@@ -52,16 +54,20 @@ def atari_learn(env,
         # which is different from the number of steps in the underlying env
         return get_wrapper_by_name(env, "Monitor").get_total_steps() >= num_timesteps
 
-    exploration_schedule = PiecewiseSchedule(
-        [
-            (0, 1.0),
-            (1e6, 0.1),
-            (num_iterations / 2, 0.01),
-        ], outside_value=0.01
-    )
+    if not epsilon:
+        exploration_schedule = PiecewiseSchedule(
+            [
+                (0, 1.0),
+                (1e6, 0.1),
+                (num_iterations / 2, 0.01),
+            ], outside_value=0.01
+        )
+    else:
+        exploration_schedule = LinearSchedule(1000000, epsilon, epsilon)
 
     dqn.learn(
         env,
+        log_name=log_name,
         q_func=atari_model,
         optimizer_spec=optimizer,
         session=session,
@@ -118,6 +124,17 @@ def get_env(task, seed):
     return env
 
 def main():
+    parser = argparse.ArgumentParser(description='Run dqn atari')
+    parser.add_argument('-e', '--epsilon', type=float, default=0.1)
+    parser.add_argument('-n', '--name', type=float, default=0.1)
+
+    if not args.name:
+        print("Name must be specified!")
+        raise
+
+    args = parser.parse_args()
+
+
     # Get Atari games.
     benchmark = gym.benchmark_spec('Atari40M')
 
@@ -128,7 +145,7 @@ def main():
     seed = 0 # Use a seed of zero (you may want to randomize the seed!)
     env = get_env(task, seed)
     session = get_session()
-    atari_learn(env, session, num_timesteps=task.max_timesteps)
+    atari_learn(env, session, args.name, num_timesteps=task.max_timesteps)
 
 if __name__ == "__main__":
     main()

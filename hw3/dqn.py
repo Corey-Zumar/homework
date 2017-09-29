@@ -14,6 +14,7 @@ def learn(env,
           q_func,
           optimizer_spec,
           session,
+          log_name,
           exploration=LinearSchedule(1000000, 0.1),
           stopping_criterion=None,
           replay_buffer_size=1000000,
@@ -320,7 +321,7 @@ def learn(env,
             print("episodes %d" % len(episode_rewards))
             print("exploration %f" % exploration.value(t))
             print("learning_rate %f" % optimizer_spec.lr_schedule.value(t))
-            log_file = open("log_{}.txt".format(exploration.final_p), "a")
+            log_file = open("log_{}.txt".format(log_name), "a")
             log_file.write("Timestep %d\n" % (t,))
             log_file.write("mean reward (100 episodes) %f\n" % mean_episode_reward)
             log_file.write("best mean reward %f\n" % best_mean_episode_reward)
