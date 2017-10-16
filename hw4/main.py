@@ -4,11 +4,13 @@ import gym
 from dynamics import NNDynamicsModel
 from controllers import MPCcontroller, RandomController
 from cost_functions import cheetah_cost_fn, trajectory_cost_fn
+import consts
 import time
 import logz
 import os
 import copy
 import matplotlib.pyplot as plt
+import itertools
 from cheetah_env import HalfCheetahEnvNew
 
 def sample(env, 
@@ -22,10 +24,30 @@ def sample(env,
         and returns rollouts by running on the env. 
         Each path can have elements for observations, next_observations, rewards, returns, actions, etc.
     """
-    paths = []
-    """ YOUR CODE HERE """
 
-    return paths
+    """ YOUR CODE HERE """
+    data = []
+    rewards = []
+    costs = []
+    for _ in range(num_paths):
+        steps = 0
+        state = env.reset()
+        while not done:
+            action, cost = random_controller.get_action(state)
+            next_state, reward, done, _ = env.step(action)
+            data.append((state, action, next_state))
+            rewards.append(reward)
+            costs.append(cost)
+            if render:
+                env.render()
+            if verbose:
+                print("Verbose")
+            if done or (steps >= horizon)
+                break
+
+            steps += 1
+
+    return data, rewards, costs
 
 # Utility to compute cost a path for a given cost function
 def path_cost(cost_fn, path):
@@ -38,7 +60,30 @@ def compute_normalization(data):
     """
 
     """ YOUR CODE HERE """
-    return mean_obs, std_obs, mean_deltas, std_deltas, mean_action, std_action
+
+    states = np.array([state for state,_,_ in data], dtype=np.float32)
+    actions = np.array([action for _,action,_ in data], dtype=np.float32)
+    next_states = np.array([next_state for _,_,next_state in data], dtype=np.float32)
+
+    state_deltas = next_states - states
+
+    mean_states = np.mean(states, axis=0)
+    std_states = np.std(states, axis=0)
+    mean_deltas = np.mean(state_deltas)
+    std_deltas = np.std(state_deltas)
+    mean_actions = np.mean(actions, axis=0)
+    std_actions = np.std(actions, axis=0)
+
+    normalization_data = {
+        consts.NORMALIZATION_KEY_MEAN_STATES : mean_states,
+        consts.NORMALIZATION_KEY_STD_STATES : std_states,
+        consts.NORMALIZATION_KEY_MEAN_DELTAS : mean_deltas,
+        consts.NORMALIZATION_KEY_STD_DELTAS : std_deltas,
+        consts.NORMALIZATION_KEY_MEAN_ACTIONS : mean_actions,
+        consts.NORMALIZATION_KEY_STD_ACTIONS : std_actions
+    }
+
+    return normalization_data
 
 
 def plot_comparison(env, dyn_model):
@@ -112,7 +157,12 @@ def train(env,
     random_controller = RandomController(env)
 
     """ YOUR CODE HERE """
-
+    training_data, _, _ = sample(env=env,
+                           controller=random_controller,
+                           num_paths=num_paths_random,
+                           horizon=env_horizon,
+                           render=render,
+                           verbose=False)
 
     #========================================================
     # 
@@ -122,7 +172,8 @@ def train(env,
     # for normalizing inputs and denormalizing outputs
     # from the dynamics network. 
     # 
-    normalization = """ YOUR CODE HERE """
+    """ YOUR CODE HERE """
+    normalization = compute_normalization(training_data)
 
 
     #========================================================
@@ -163,8 +214,15 @@ def train(env,
     # 
     for itr in range(onpol_iters):
         """ YOUR CODE HERE """
+        dyn_model.fit(training_data)
+        new_data, returns, costs = sample(env=env,
+                                          controller=mpc_controller,
+                                          num_paths=num_paths_onpol,
+                                          horizon=mpc_horizon,
+                                          render=render,
+                                          verbose=False)
 
-
+        training_data = training_data + new_data
 
         # LOGGING
         # Statistics for performance of MPC policy using
