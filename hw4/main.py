@@ -13,8 +13,11 @@ import matplotlib.pyplot as plt
 import itertools
 from cheetah_env import HalfCheetahEnvNew
 
+from utils import Data
+
 def sample(env, 
-           controller, 
+           controller,
+           cost_fn,
            num_paths=10, 
            horizon=1000, 
            render=False,
@@ -26,32 +29,44 @@ def sample(env,
     """
 
     """ YOUR CODE HERE """
-    data = []
+
+    all_data = Data()
     rewards = []
     costs = []
     for _ in range(num_paths):
-        steps = 0
+        data = Data()
         state = env.reset()
-        while not done:
-            action, cost = random_controller.get_action(state)
+        done = False
+        total_reward = 0
+        for _ in range(horizon):
+            action = controller.get_action(state)
             next_state, reward, done, _ = env.step(action)
-            data.append((state, action, next_state))
-            rewards.append(reward)
-            costs.append(cost)
+
+            # Preserve results of step
+            data.add(state, action, next_state)
+            total_reward += reward
+
             if render:
                 env.render()
             if verbose:
                 print("Verbose")
-            if done or (steps >= horizon)
+            if done:
                 break
 
-            steps += 1
+            state = next_state
 
-    return data, rewards, costs
+        all_data.add_all(data)
+
+        rewards.append(total_reward)
+
+        cost = data.get_cost(cost_fn)
+        costs.append(cost)
+
+    return all_data, rewards, costs
 
 # Utility to compute cost a path for a given cost function
 def path_cost(cost_fn, path):
-    return trajectory_cost_fn(cost_fn, path['observations'], path['actions'], path['next_observations'])
+    return trajectory_cost_fn(cost_fn, path['states'], path['actions'], path['next_states'])
 
 def compute_normalization(data):
     """
@@ -60,19 +75,14 @@ def compute_normalization(data):
     """
 
     """ YOUR CODE HERE """
+    state_deltas = data.get_next_states() - data.get_states()
 
-    states = np.array([state for state,_,_ in data], dtype=np.float32)
-    actions = np.array([action for _,action,_ in data], dtype=np.float32)
-    next_states = np.array([next_state for _,_,next_state in data], dtype=np.float32)
-
-    state_deltas = next_states - states
-
-    mean_states = np.mean(states, axis=0)
-    std_states = np.std(states, axis=0)
-    mean_deltas = np.mean(state_deltas)
-    std_deltas = np.std(state_deltas)
-    mean_actions = np.mean(actions, axis=0)
-    std_actions = np.std(actions, axis=0)
+    mean_states = np.mean(data.get_states(), axis=0)
+    std_states = np.std(data.get_states(), axis=0)
+    mean_deltas = np.mean(state_deltas, axis=0)
+    std_deltas = np.std(state_deltas, axis=0)
+    mean_actions = np.mean(data.get_actions(), axis=0)
+    std_actions = np.std(data.get_actions(), axis=0)
 
     normalization_data = {
         consts.NORMALIZATION_KEY_MEAN_STATES : mean_states,
@@ -158,11 +168,12 @@ def train(env,
 
     """ YOUR CODE HERE """
     training_data, _, _ = sample(env=env,
-                           controller=random_controller,
-                           num_paths=num_paths_random,
-                           horizon=env_horizon,
-                           render=render,
-                           verbose=False)
+                                 controller=random_controller,
+                                 cost_fn=cost_fn,
+                                 num_paths=num_paths_random,
+                                 horizon=env_horizon,
+                                 render=render,
+                                 verbose=False)
 
     #========================================================
     # 
@@ -217,12 +228,13 @@ def train(env,
         dyn_model.fit(training_data)
         new_data, returns, costs = sample(env=env,
                                           controller=mpc_controller,
+                                          cost_fn=cost_fn,
                                           num_paths=num_paths_onpol,
-                                          horizon=mpc_horizon,
+                                          horizon=env_horizon,
                                           render=render,
                                           verbose=False)
 
-        training_data = training_data + new_data
+        training_data.add_all(new_data)
 
         # LOGGING
         # Statistics for performance of MPC policy using

@@ -1,8 +1,9 @@
 import tensorflow as tf
 import numpy as np
 import consts
+from sklearn.utils import shuffle
 
-EPSILON = 1e-18
+EPSILON = 1e-10
 
 # Predefined function to build a feedforward neural network
 def build_mlp(input_placeholder, 
@@ -39,7 +40,7 @@ class NNDynamicsModel():
         # Initialize constants for training
         self.mean_states = normalization[consts.NORMALIZATION_KEY_MEAN_STATES]
         self.std_states = normalization[consts.NORMALIZATION_KEY_STD_STATES]
-        self.mean_deltas = normalization[consts.NORMALIZATION_KEY_MEAN_STATES]
+        self.mean_deltas = normalization[consts.NORMALIZATION_KEY_MEAN_DELTAS]
         self.std_deltas = normalization[consts.NORMALIZATION_KEY_STD_DELTAS]
         self.mean_actions = normalization[consts.NORMALIZATION_KEY_MEAN_ACTIONS]
         self.std_actions = normalization[consts.NORMALIZATION_KEY_STD_ACTIONS]
@@ -51,8 +52,8 @@ class NNDynamicsModel():
 
         # Create Tensorflow graph
 
-        self.action_shape = self.env.action_space.shape()
-        self.state_shape = self.env.state_space.shape()
+        self.action_shape = env.action_space.shape
+        self.state_shape = env.observation_space.shape
 
         t_action_shape = tuple([None] + list(self.action_shape))
         t_state_shape = tuple([None] + list(self.state_shape))
@@ -61,16 +62,16 @@ class NNDynamicsModel():
         self.t_states = tf.placeholder(tf.float32, t_state_shape)
         self.t_delta_labels = tf.placeholder(tf.float32, t_state_shape)
 
-        t_mlp_inputs = tf.concat([self.t_actions, self.t_states], axis=0)
+        t_mlp_inputs = tf.concat([self.t_actions, self.t_states], axis=1)
         self.t_state_deltas = build_mlp(input_placeholder=t_mlp_inputs,
-                                        output_size=self.state_shape,
-                                        scope=None,
+                                        output_size=env.obs_dim,
+                                        scope="dynamics_model",
                                         n_layers=n_layers,
                                         size=size,
                                         activation=activation,
                                         output_activation=output_activation)
 
-        self.t_loss = tf.nn.l2_loss(self.t_state_deltas - self.t_delta_labels)
+        self.t_loss = tf.losses.mean_squared_error(predictions=self.t_state_deltas, labels=self.t_delta_labels)
         self.t_train = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.t_loss)
 
         # Model variables will be initialized prior to model use in `main.py`
@@ -81,20 +82,15 @@ class NNDynamicsModel():
         """
         """YOUR CODE HERE """
 
-        states = np.array([state for state,_,_ in data], dtype=np.float32)
-        actions = np.array([action for _,action,_ in data], dtype=np.float32)
-        next_states = np.array([next_state for _,_,next_state in data], dtype=np.float32)
+        norm_states = (data.get_states() - self.mean_states) / (self.std_states + EPSILON)
+        norm_actions = (data.get_actions() - self.mean_actions) / (self.std_actions + EPSILON)
 
-        norm_states = (states - self.mean_states) / (self.std_states + EPSILON)
-        norm_actions = (actions - self.mean_actions) / (self.std_actions + EPSILON)
-
-        state_deltas = (next_states - states)
-
-        # TODO: CHECK THIS!!!
+        state_deltas = (data.get_next_states() - data.get_states())
         norm_state_deltas = (state_deltas - self.mean_deltas) / (self.std_deltas + EPSILON)
 
         for _ in range(self.iterations):
             batch_idx = 0
+            norm_states, norm_actions, norm_state_deltas = shuffle(norm_states, norm_actions, norm_state_deltas)
             while batch_idx + self.batch_size < len(data):
                 states_batch = norm_states[batch_idx : batch_idx + self.batch_size]
                 actions_batch = norm_actions[batch_idx : batch_idx + self.batch_size]
@@ -107,7 +103,6 @@ class NNDynamicsModel():
                 }
 
                 loss, _ = self.sess.run([self.t_loss, self.t_train], feed_dict=feed_dict)
-                print("LOSS: {}".format(loss))
 
                 batch_idx += self.batch_size
 
@@ -120,9 +115,10 @@ class NNDynamicsModel():
 
         feed_dict = {
             self.t_states : norm_states,
-            self.norm_actions : norm_actions
+            self.t_actions : norm_actions
         }
         norm_deltas = self.sess.run(self.t_state_deltas, feed_dict=feed_dict)
+
         final_deltas = (self.std_deltas * norm_deltas) + self.mean_deltas
 
-        return final_deltas
+        return states + final_deltas
