@@ -71,15 +71,10 @@ class MPCcontroller(Controller):
         all_states = np.array(all_states, dtype=np.float32)
         all_next_states = np.array(all_next_states, dtype=np.float32)
 
-        costs = []
+        new_acts_shape = list(all_states.shape)
+        new_acts_shape[2] = self.action_shape[0]
 
-        for j in range(self.num_simulated_paths):
-          # Takes (states, actions, next states)
-          trajectory_states = all_states[:,j,:]
-          trajectory_next_states = all_next_states[:,j,:]
-          trajectory_actions = all_actions[j]
-          trajectory_cost = trajectory_cost_fn(self.cost_fn, trajectory_states, trajectory_actions, trajectory_next_states)
-          costs.append(trajectory_cost)
+        costs = trajectory_cost_fn(self.cost_fn, all_states, np.reshape(all_actions, tuple(new_acts_shape)), all_next_states)
 
         best_trajectory = np.argmin(costs)
         best_cost = np.min(costs)

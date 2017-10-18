@@ -38,7 +38,7 @@ def sample(env,
         state = env.reset()
         done = False
         total_reward = 0
-        for _ in range(horizon):
+        for j in range(horizon):
             action = controller.get_action(state)
             next_state, reward, done, _ = env.step(action)
 
