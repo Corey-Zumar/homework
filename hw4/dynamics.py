@@ -89,23 +89,19 @@ class NNDynamicsModel():
         norm_state_deltas = (state_deltas - self.mean_deltas) / (self.std_deltas + EPSILON)
 
         for _ in range(self.iterations):
-            batch_idx = np.random.choice(len(norm_states), self.batch_size)
             norm_states, norm_actions, norm_state_deltas = shuffle(norm_states, norm_actions, norm_state_deltas)
-            #while batch_idx + self.batch_size < len(data):
+            for batch_idx in range(0, len(data), batch_size):
+                states_batch = norm_states[batch_idx : batch_idx + batch_size]
+                actions_batch = norm_actions[batch_idx : batch_idx + batch_size]
+                deltas_batch = norm_state_deltas[batch_idx : batch_idx + batch_size]
 
-            states_batch = norm_states[batch_idx]
-            actions_batch = norm_actions[batch_idx]
-            deltas_batch = norm_state_deltas[batch_idx]
+                feed_dict = {
+                    self.t_states : states_batch,
+                    self.t_actions : actions_batch,
+                    self.t_delta_labels : deltas_batch
+                }
 
-            feed_dict = {
-                self.t_states : states_batch,
-                self.t_actions : actions_batch,
-                self.t_delta_labels : deltas_batch
-            }
-
-            loss, _ = self.sess.run([self.t_loss, self.t_train], feed_dict=feed_dict)
-
-            batch_idx += self.batch_size
+                loss, _ = self.sess.run([self.t_loss, self.t_train], feed_dict=feed_dict)
 
     def predict(self, states, actions):
         """ Write a function to take in a batch of (unnormalized) states and (unnormalized) actions and return the (unnormalized) next states as predicted by using the model """
