@@ -90,7 +90,7 @@ class NNDynamicsModel():
 
         for _ in range(self.iterations):
             norm_states, norm_actions, norm_state_deltas = shuffle(norm_states, norm_actions, norm_state_deltas)
-            for batch_idx in range(0, len(data), batch_size):
+            for batch_idx in range(0, len(data), self.batch_size):
                 states_batch = norm_states[batch_idx : batch_idx + batch_size]
                 actions_batch = norm_actions[batch_idx : batch_idx + batch_size]
                 deltas_batch = norm_state_deltas[batch_idx : batch_idx + batch_size]
